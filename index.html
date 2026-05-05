@@ -1137,7 +1137,6 @@ let profilActif = null;
 let cfg, kits=[], reservations=[], kitOverrides={}, editingId=null, curPhoto=null, dispoKitId=null;
 
 function loadCfg(){
-  // URLs des images hébergées sur le repo GitHub
   const GH_BASE = 'https://rayaguet.github.io/reservation-annulation-kits/';
   cfg = { pwd:DEFAULT_PWD, formUrl:DEFAULT_FORM, adminEmail:'', meContent:DEFAULT_ME,
           logo:GH_BASE+'kerea_logo.png', logo2:GH_BASE+'efficience_logo.png',
@@ -1145,17 +1144,29 @@ function loadCfg(){
   kitOverrides = {};
 }
 
-async function loadSettingsFromSheet(){ /* MODE LOCAL */ }
-function parseCSVLine_(line){
-  const cols=[];let cur='',inQ=false;
-  for(let i=0;i<line.length;i++){
-    const c=line[i];
-    if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
-    else if(c===','&&!inQ){cols.push(cur);cur='';}
-    else cur+=c;
+async function loadSettingsFromSheet(){
+  try {
+    const resp = await fetch(DEFAULT_URL_PARAMS, {cache:'no-store'});
+    if(!resp.ok) return;
+    const rows = parseCSV(await resp.text());
+    rows.forEach(r => {
+      const key = (r['cle'] || r['clé'] || r['key'] || '').trim();
+      const val = (r['valeur'] || r['value'] || '').trim();
+      if(!key || !val) return;
+      if(key === 'mode_emploi')          cfg.meContent = val;
+      if(key === 'pwd')                  cfg.pwd = val;
+      if(key === 'admin_email')          cfg.adminEmail = val;
+      if(key === 'logo_url')             cfg.logo = val;
+      if(key === 'logo_efficience_url')  cfg.logo2 = val;
+      if(key === 'form_url')             cfg.formUrl = val;
+      if(key === 'url_kits')             cfg.urlKits = val;
+      if(key === 'url_resa')             cfg.urlResa = val;
+    });
+  } catch(e) {
+    console.warn('loadSettingsFromSheet:', e.message);
   }
-  cols.push(cur);return cols;
 }
+
 async function saveSettingsToSheet(data){
   const gasUrl=cfg.gasUrl||GAS_URL;
   if(!gasUrl) return false;
